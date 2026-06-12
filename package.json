@@ -1,0 +1,9 @@
+{
+  "name": "analisis-gondolas-algisa",
+  "version": "1.0.0",
+  "description": "App de analisis de gondolas con IA para ALGISA / JOMEWILI (Arroz Pony, Aceite Algisa y Don Roberto)",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  }
+}

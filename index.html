@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análisis de Góndolas — ALGISA / JOMEWILI</title>
+<style>
+  :root{
+    --bg:#0f1410;
+    --panel:#161d18;
+    --panel-2:#1d2620;
+    --line:#2a352e;
+    --text:#eef2ee;
+    --text-dim:#9fb0a4;
+    --pony-amarillo:#f3c517;
+    --algisa-verde:#1e7a3c;
+    --ok:#3ecf8e;
+    --warn:#f3c517;
+    --bad:#e2554a;
+    --mono: "JetBrains Mono", "SF Mono", Consolas, monospace;
+    --sans: "Inter", -apple-system, system-ui, sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    min-height:100vh;
+    padding:0 0 60px;
+  }
+  header{
+    padding:28px 20px 20px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, #161d18 0%, #0f1410 100%);
+  }
+  .brand-row{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .brand-chip{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.12em;
+    padding:3px 8px;
+    border-radius:3px;
+    font-weight:700;
+  }
+  .chip-pony{background:var(--pony-amarillo); color:#3a2c00;}
+  .chip-algisa{background:var(--algisa-verde); color:#eafff0;}
+  h1{font-size:20px; font-weight:700; letter-spacing:-.01em;}
+  .subtitle{color:var(--text-dim); font-size:13px; margin-top:4px;}
+
+  main{max-width:560px; margin:0 auto; padding:20px;}
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px;
+    margin-bottom:16px;
+  }
+  .card h2{font-size:14px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-dim); margin-bottom:12px; font-weight:600;}
+
+  .upload-zone{
+    border:1px dashed var(--line);
+    border-radius:8px;
+    padding:24px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s, background .15s;
+  }
+  .upload-zone:hover{border-color:var(--pony-amarillo); background:var(--panel-2);}
+  .upload-zone.has-image{padding:0; border-style:solid; overflow:hidden;}
+  .upload-zone img{display:block; width:100%; max-height:380px; object-fit:contain; background:#000;}
+  .upload-zone .hint{font-size:13px; color:var(--text-dim); margin-top:6px;}
+  .upload-zone .icon{font-size:28px; margin-bottom:8px;}
+  input[type=file]{display:none;}
+
+  .meta-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:14px;
+  }
+  .field label{
+    display:block;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--text-dim);
+    margin-bottom:6px;
+  }
+  .field input, .field select{
+    width:100%;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:9px 10px;
+    color:var(--text);
+    font-size:14px;
+    font-family:var(--sans);
+  }
+  .field input:focus, .field select:focus{outline:none; border-color:var(--pony-amarillo);}
+
+  .btn{
+    display:block;
+    width:100%;
+    padding:14px;
+    border-radius:8px;
+    border:none;
+    font-size:15px;
+    font-weight:700;
+    font-family:var(--sans);
+    cursor:pointer;
+    transition:filter .15s, opacity .15s;
+    margin-top:16px;
+  }
+  .btn-primary{background:var(--pony-amarillo); color:#3a2c00;}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-primary:disabled{opacity:.4; cursor:not-allowed;}
+  .btn-secondary{
+    background:transparent; color:var(--text-dim); border:1px solid var(--line);
+    margin-top:8px; font-weight:600; font-size:13px; padding:10px;
+  }
+
+  .loading{display:none; text-align:center; padding:30px 0;}
+  .loading.active{display:block;}
+  .spinner{
+    width:32px; height:32px;
+    border:3px solid var(--line);
+    border-top-color:var(--pony-amarillo);
+    border-radius:50%;
+    margin:0 auto 14px;
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading p{color:var(--text-dim); font-size:13px;}
+
+  #results{display:none;}
+  #results.active{display:block;}
+
+  .score-banner{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--panel-2);
+    border-radius:8px;
+    padding:16px 18px;
+    margin-bottom:16px;
+    border:1px solid var(--line);
+  }
+  .score-banner .label{font-size:13px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em;}
+  .score-banner .score{font-family:var(--mono); font-size:32px; font-weight:700;}
+  .score-good{color:var(--ok);}
+  .score-mid{color:var(--warn);}
+  .score-bad{color:var(--bad);}
+
+  .check-item{
+    display:flex; gap:12px;
+    padding:12px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .check-item:last-child{border-bottom:none;}
+  .check-status{
+    flex-shrink:0;
+    width:22px; height:22px;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:700;
+    margin-top:1px;
+  }
+  .status-ok{background:rgba(62,207,142,.15); color:var(--ok);}
+  .status-warn{background:rgba(243,197,23,.15); color:var(--warn);}
+  .status-bad{background:rgba(226,85,74,.15); color:var(--bad);}
+  .check-body .check-title{font-size:14px; font-weight:600; margin-bottom:3px;}
+  .check-body .check-detail{font-size:13px; color:var(--text-dim); line-height:1.5;}
+
+  .share-bars{margin-top:4px;}
+  .share-row{display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:13px;}
+  .share-row .name{width:90px; flex-shrink:0; color:var(--text-dim);}
+  .share-track{flex:1; height:8px; background:var(--panel-2); border-radius:4px; overflow:hidden;}
+  .share-fill{height:100%; border-radius:4px;}
+  .share-pct{width:42px; text-align:right; font-family:var(--mono); font-size:12px;}
+
+  .error-box{
+    background:rgba(226,85,74,.1);
+    border:1px solid var(--bad);
+    border-radius:8px;
+    padding:14px;
+    color:var(--bad);
+    font-size:13px;
+    display:none;
+  }
+  .error-box.active{display:block;}
+
+  footer{
+    text-align:center;
+    color:var(--text-dim);
+    font-size:11px;
+    padding:20px;
+    font-family:var(--mono);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand-row">
+    <span class="brand-chip chip-pony">PONY</span>
+    <span class="brand-chip chip-algisa">ALGISA</span>
+  </div>
+  <h1>Análisis de góndola</h1>
+  <p class="subtitle">Sacá una foto del lineal y obtené presencia, share de espacio y estado de exhibición.</p>
+</header>
+
+<main>
+
+  <div class="card">
+    <h2>1. Foto de la góndola</h2>
+    <div class="upload-zone" id="uploadZone">
+      <div id="uploadPlaceholder">
+        <div class="icon">📷</div>
+        <div>Tocá para subir o tomar una foto</div>
+        <div class="hint">JPG / PNG — góndola completa, buena luz</div>
+      </div>
+      <img id="previewImg" style="display:none;">
+    </div>
+    <input type="file" id="fileInput" accept="image/*" capture="environment">
+  </div>
+
+  <div class="card">
+    <h2>2. Datos del punto de venta</h2>
+    <div class="meta-grid">
+      <div class="field">
+        <label>Punto de venta</label>
+        <input type="text" id="pdv" placeholder="Ej: Super Express">
+      </div>
+      <div class="field">
+        <label>Ciudad / Zona</label>
+        <input type="text" id="ciudad" placeholder="Ej: Villarrica">
+      </div>
+      <div class="field" style="grid-column:1/-1;">
+        <label>Categoría a evaluar</label>
+        <select id="categoria">
+          <option value="arroz">Arroz (PONY)</option>
+          <option value="aceite">Aceite (ALGISA / Don Roberto)</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="analyzeBtn" disabled>Analizar góndola</button>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p id="loadingText">Analizando exhibición…</p>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div id="results">
+
+    <div class="card">
+      <div class="score-banner">
+        <div>
+          <div class="label">Cumplimiento general</div>
+        </div>
+        <div class="score" id="scoreValue">—</div>
+      </div>
+
+      <h2>Share de espacio (góndola)</h2>
+      <div class="share-bars" id="shareBars"></div>
+    </div>
+
+    <div class="card">
+      <h2>Checklist de exhibición</h2>
+      <div id="checklist"></div>
+    </div>
+
+    <div class="card">
+      <h2>Resumen y recomendaciones</h2>
+      <p id="summaryText" style="font-size:14px; line-height:1.6; color:var(--text);"></p>
+    </div>
+
+    <button class="btn btn-secondary" id="resetBtn">Analizar otra foto</button>
+  </div>
+
+</main>
+
+<footer>ALGISA / JOMEWILI — Análisis de góndolas con IA</footer>
+
+<script>
+const fileInput = document.getElementById('fileInput');
+const uploadZone = document.getElementById('uploadZone');
+const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+const previewImg = document.getElementById('previewImg');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const loading = document.getElementById('loading');
+const resultsEl = document.getElementById('results');
+const errorBox = document.getElementById('errorBox');
+const resetBtn = document.getElementById('resetBtn');
+
+let imageBase64 = null;
+let imageMediaType = null;
+
+// IMPORTANTE: esta es la URL de TU backend (la funcion serverless).
+// Si la app esta alojada en Vercel junto con /api/analizar.js, "/api/analizar" funciona tal cual.
+const API_ENDPOINT = '/api/analizar';
+
+uploadZone.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  imageMediaType = file.type;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const dataUrl = ev.target.result;
+    imageBase64 = dataUrl.split(',')[1];
+    previewImg.src = dataUrl;
+    previewImg.style.display = 'block';
+    uploadPlaceholder.style.display = 'none';
+    uploadZone.classList.add('has-image');
+    analyzeBtn.disabled = false;
+  };
+  reader.readAsDataURL(file);
+});
+
+resetBtn.addEventListener('click', () => {
+  resultsEl.classList.remove('active');
+  errorBox.classList.remove('active');
+  imageBase64 = null;
+  previewImg.style.display = 'none';
+  uploadPlaceholder.style.display = 'block';
+  uploadZone.classList.remove('has-image');
+  analyzeBtn.disabled = true;
+  fileInput.value = '';
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+analyzeBtn.addEventListener('click', async () => {
+  if (!imageBase64) return;
+
+  const categoria = document.getElementById('categoria').value;
+  const pdv = document.getElementById('pdv').value.trim();
+  const ciudad = document.getElementById('ciudad').value.trim();
+
+  analyzeBtn.disabled = true;
+  loading.classList.add('active');
+  resultsEl.classList.remove('active');
+  errorBox.classList.remove('active');
+
+  try {
+    const response = await fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        imageBase64,
+        imageMediaType,
+        categoria,
+        pdv,
+        ciudad
+      })
+    });
+
+    const parsed = await response.json();
+
+    if (!response.ok) {
+      throw new Error(parsed.error || 'Error desconocido del servidor');
+    }
+
+    renderResults(parsed);
+
+  } catch (err) {
+    console.error(err);
+    errorBox.textContent = "No se pudo completar el análisis. Detalle: " + (err.message || err);
+    errorBox.classList.add('active');
+  } finally {
+    loading.classList.remove('active');
+    analyzeBtn.disabled = false;
+  }
+});
+
+function renderResults(data) {
+  const scoreEl = document.getElementById('scoreValue');
+  const score = data.score_general ?? 0;
+  scoreEl.textContent = score + '%';
+  scoreEl.className = 'score ' + (score >= 70 ? 'score-good' : score >= 40 ? 'score-mid' : 'score-bad');
+
+  const shareBars = document.getElementById('shareBars');
+  shareBars.innerHTML = '';
+  const shares = [
+    { name: 'Cliente', pct: data.share_espacio?.cliente_pct ?? 0, color: 'var(--pony-amarillo)' },
+    { name: 'Competencia', pct: data.share_espacio?.competencia_pct ?? 0, color: '#5a6b5e' }
+  ];
+  shares.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'share-row';
+    row.innerHTML = `
+      <div class="name">${s.name}</div>
+      <div class="share-track"><div class="share-fill" style="width:${s.pct}%; background:${s.color};"></div></div>
+      <div class="share-pct">${s.pct}%</div>
+    `;
+    shareBars.appendChild(row);
+  });
+  if (data.presencia?.comentario) {
+    const note = document.createElement('p');
+    note.style.fontSize = '12px';
+    note.style.color = 'var(--text-dim)';
+    note.style.marginTop = '10px';
+    note.style.lineHeight = '1.5';
+    note.textContent = data.presencia.comentario;
+    shareBars.appendChild(note);
+  }
+  if (data.share_espacio?.marcas_competencia?.length) {
+    const note2 = document.createElement('p');
+    note2.style.fontSize = '12px';
+    note2.style.color = 'var(--text-dim)';
+    note2.style.marginTop = '4px';
+    note2.textContent = 'Competencia identificada: ' + data.share_espacio.marcas_competencia.join(', ');
+    shareBars.appendChild(note2);
+  }
+
+  const checklistEl = document.getElementById('checklist');
+  checklistEl.innerHTML = '';
+
+  if (data.presencia?.variantes_detectadas?.length) {
+    const div = document.createElement('div');
+    div.className = 'check-item';
+    div.innerHTML = `
+      <div class="check-status status-ok">✓</div>
+      <div class="check-body">
+        <div class="check-title">Variantes detectadas</div>
+        <div class="check-detail">${data.presencia.variantes_detectadas.join(', ')}</div>
+      </div>
+    `;
+    checklistEl.appendChild(div);
+  } else if (data.presencia?.marca_cliente_presente === false) {
+    const div = document.createElement('div');
+    div.className = 'check-item';
+    div.innerHTML = `
+      <div class="check-status status-bad">✕</div>
+      <div class="check-body">
+        <div class="check-title">Producto no detectado</div>
+        <div class="check-detail">No se identificó el producto del cliente en esta góndola.</div>
+      </div>
+    `;
+    checklistEl.appendChild(div);
+  }
+
+  (data.checklist || []).forEach(item => {
+    const statusClass = item.estado === 'ok' ? 'status-ok' : item.estado === 'bad' ? 'status-bad' : 'status-warn';
+    const icon = item.estado === 'ok' ? '✓' : item.estado === 'bad' ? '✕' : '!';
+    const div = document.createElement('div');
+    div.className = 'check-item';
+    div.innerHTML = `
+      <div class="check-status ${statusClass}">${icon}</div>
+      <div class="check-body">
+        <div class="check-title">${item.criterio}</div>
+        <div class="check-detail">${item.detalle}</div>
+      </div>
+    `;
+    checklistEl.appendChild(div);
+  });
+
+  document.getElementById('summaryText').textContent = data.resumen || '(sin resumen)';
+
+  resultsEl.classList.add('active');
+  resultsEl.scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+
+</body>
+</html>
